@@ -20,8 +20,8 @@ typedef struct ScalarThreadArg {
 Complex* CreateDFTMatrix(unsigned int samples, unsigned int channels) {
 	Complex* matrix = (Complex*)malloc(sizeof(Complex) * samples * channels);
 
-	float w = -2.f * M_PI / samples;
-	const float g = 1.02;	// ratio by which frequency increases between channels, changes spectrum range
+	float w = 16.35f * 2.f * M_PI / 44100.f;	// Base frequency of 16.35 Hz which is the lowest C on a grand piano
+	const float g = exp((1.f/12.f) * log(2.f));	// Ratio of 1 semitone (equal temperment) between channels
 
 	for (unsigned int y = 0; y < channels; y++) {
 		for (unsigned int x = 0; x < samples; x++) {
@@ -69,7 +69,7 @@ void* ScalarMultiplyThreadPoolFunc(void* args) {
 			sum.imag += arg.input[i] * arg.matrix[i].imag;
 		}
 		
-		*arg.output = sqrtf((sum.real * sum.real) + (sum.imag * sum.imag));
+		*arg.output = sqrtf((sum.real * sum.real) + (sum.imag * sum.imag)) / arg.samples;
 
 		sem_post(&wait_threads);
 	}
@@ -124,30 +124,3 @@ void DestroyScalarTransformThreadPool() {
 	free(thread);
 	free(arg);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
