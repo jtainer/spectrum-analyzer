@@ -14,15 +14,16 @@
 #include "transform.h"
 
 #define FT_SAMPLES 256	// num of samples for fourier transform
-#define FT_CHANNELS 256	// num of channels for fourier transform, should be equal to FT_SAMPLES
+#define FT_CHANNELS 128	// num of channels for fourier transform, should be less than or equal to FT_SAMPLES
 
-#define SMOOTHING_CONST 0.9f	// 0.f == no smoothing, 1.f = max smoothing (no movement)
+#define SMOOTHING_CONST 0.95f	// 0.f == no smoothing, 1.f = max smoothing (no movement)
 
 static float sampleBuffer[FT_SAMPLES];
 static float outputBuffer[FT_CHANNELS];
 static float resultBuffer[FT_CHANNELS];
 static sem_t sampleBufferMutex;
 
+// Callback to pull samples from miniaudio on the fly
 void StreamProcessor(void* data, unsigned int frameCount) {
 	sem_wait(&sampleBufferMutex);
 	float* sample = (float*) data;
@@ -30,6 +31,11 @@ void StreamProcessor(void* data, unsigned int frameCount) {
 		sampleBuffer[i] = sample[i * 2];
 	}
 	sem_post(&sampleBufferMutex);
+}
+
+// Modified sigmoid function for limiting bar height
+float sigmoid(float x) {
+	return 2.f / (1 + exp(-x * 10)) - 1;
 }
 
 int main(int argc, char** argv) {
@@ -41,11 +47,15 @@ int main(int argc, char** argv) {
 	}
 
 	// Window setup
-	const int screenWidth = 1920;
-	const int screenHeight = 1080;
+	int screenWidth = 0;
+	int screenHeight = 0;
 	SetConfigFlags(FLAG_WINDOW_ALWAYS_RUN | FLAG_VSYNC_HINT);
 	InitWindow(screenWidth, screenHeight, argv[1]);
 	SetTargetFPS(120);
+	int monitor = GetCurrentMonitor();
+	screenWidth = GetMonitorWidth(monitor);
+	screenHeight = GetMonitorHeight(monitor);
+	SetWindowSize(screenWidth, screenHeight);
 	ToggleFullscreen();
 	InitAudioDevice();
 
@@ -77,7 +87,7 @@ int main(int argc, char** argv) {
 		ClearBackground(bgColor);
 		for (int i = 0; i < FT_CHANNELS; i++) {
 			resultBuffer[i] = (SMOOTHING_CONST * resultBuffer[i]) + ((1.f - SMOOTHING_CONST) * outputBuffer[i]);
-			Vector2 size = { (float) screenWidth / FT_CHANNELS, log(resultBuffer[i] * 1000) * 100 };
+			Vector2 size = { (float) screenWidth / FT_CHANNELS, sigmoid(resultBuffer[i]) * screenHeight };
 			Vector2 pos = { i * size.x, screenHeight - size.y };
 			DrawRectangleV(pos, size, barColor);
 		}
