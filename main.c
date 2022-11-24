@@ -57,6 +57,7 @@ int main(int argc, char** argv) {
 	screenHeight = GetMonitorHeight(monitor);
 	SetWindowSize(screenWidth, screenHeight);
 	ToggleFullscreen();
+	HideCursor();
 	InitAudioDevice();
 
 	// Setup buffers and DFT matrix
